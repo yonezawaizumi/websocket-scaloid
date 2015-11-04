@@ -2,4 +2,11 @@
 <resources>
 	<string name="red">Red alert!</string>
 	<string name="app_name">Hello Scaloid! for gradle</string>
+	<string name="web_socket_error_not_connected">connection</string>
+	<string name="web_socket_error_connection">connection</string>
+	<string name="web_socket_error_disconnected">disconnected</string>
+	<string name="web_socket_error_send">send</string>
+	<string name="web_socket_error_server">server</string>
+	<string name="web_socket_error_auth">auth</string>
+	<string name="web_socket_error_unknown">unknown</string>
 </resources>

@@ -18,16 +18,14 @@ apply plugin: "jp.leafytree.android-scala"
 
 android {
     // Can be built with API Level 16 or higher, while this app retains runtime compatibility from API Level 10. Please refer to targetSdkVersion property
-    compileSdkVersion "android-16"
+    compileSdkVersion 23
     buildToolsVersion "22.0.1"
-	
     defaultConfig {
-        minSdkVersion 10
-        targetSdkVersion 16
+        minSdkVersion 19
+        targetSdkVersion 23
         versionCode 1
         versionName "1.0"
     }
-
     buildTypes {
         debug {
             minifyEnabled true
@@ -39,9 +37,12 @@ android {
             proguardFile file("proguard-rules.txt")
         }
     }
+    productFlavors {
+    }
 }
 
 dependencies {
-    compile "org.scala-lang:scala-library:2.11.7"
-	compile "org.scaloid:scaloid_2.11:4.0"
+    compile 'org.scala-lang:scala-library:2.11.7'
+    compile 'org.scaloid:scaloid_2.11:4.0'
+    compile 'com.neovisionaries:nv-websocket-client:1.12'
 }
