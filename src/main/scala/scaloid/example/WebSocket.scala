@@ -4,6 +4,7 @@ import com.neovisionaries.ws.client._
 import org.scaloid.common._
 
 import scala.concurrent.{Promise, Future}
+import scala.util.Try
 
 case class WebSocketParameters(uri: String, timeout: Int, cookie: String)
 
@@ -42,7 +43,9 @@ class WebSocketPF(parameters: WebSocketParameters)
     promise.future
   }
 
-  def isOpen: Boolean = socket.value.fold(false)(_.get.isOpen)
+  private def isOpen(t: Try[WebSocket]): Boolean = t.map(s => s.isOpen).getOrElse(false)
+  def isReady: Boolean = socket.value.fold(true)(isOpen)
+  def isOpen: Boolean = socket.value.fold(false)(isOpen)
 
   def close(): Unit = socket.foreach(_.disconnect)
 

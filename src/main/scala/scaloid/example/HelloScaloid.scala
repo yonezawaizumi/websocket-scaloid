@@ -42,7 +42,8 @@ class HelloScaloid extends SActivity with TagUtil {
 
   def onClick(): Unit = {
     info(s"onClick $counter")
-    info(s"socket state: ${webSocket.isOpen}")
+    info(s"socket open: ${webSocket.isOpen}")
+    info(s"socket ready: ${webSocket.isReady}")
     if (counter == 10) {
       webSocket.close()
     } else {
