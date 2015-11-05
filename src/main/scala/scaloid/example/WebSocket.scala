@@ -73,8 +73,8 @@ class WebSocketPF(parameters: WebSocketParameters)
 
   override def onTextMessage(s: WebSocket, message: String): Unit = {
     parseFrame(message) match {
-      case Some(tuple) =>
-        tuple._1.success(tuple._2)
+      case Some((promise, body)) =>
+        promise.success(body)
       case None =>
         error(s"unknown message $message")
     }
