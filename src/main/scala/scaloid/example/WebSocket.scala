@@ -17,7 +17,6 @@ class WebSocketPF(parameters: WebSocketParameters)
   private val sequencer = new java.util.concurrent.atomic.AtomicLong
   private val promises = new scala.collection.mutable.LongMap[ Promise[String]]
 
-  private val socketState = Promise[Boolean]
   private val socket: Future[WebSocket] = Future {
     val factory = new WebSocketFactory
     factory.createSocket(parameters.uri, parameters.timeout)
@@ -26,29 +25,26 @@ class WebSocketPF(parameters: WebSocketParameters)
       .connect()
   }
 
-  def state = socketState.future
-
   def request(requestString: String): Future[String] = {
-    val promise = Promise[String]
+    val promise = Promise[String]()
     val sequence = sequencer.incrementAndGet
-    val request = s"${sequence.toString} ${requestString}"
+    val request = s"${sequence.toString} $requestString"
     promises.synchronized(promises += (sequence, promise))
     socket.map { socket =>
       if (socket.isOpen) Future { socket.sendText(request) }
       else throw new IllegalStateException
     }.onFailure {
       case t =>
-        info(s"socket failed ${t}")
+        info(s"socket failed $t")
         promises.synchronized(promises -= sequence)
         promise.failure(t)
-        socketState.synchronized {
-          if (!socketState.isCompleted) socketState.failure(t)
-        }
     }
     promise.future
   }
 
-  def close: Unit = socket.foreach(_.disconnect)
+  def isOpen: Boolean = socket.value.fold(false)(_.get.isOpen)
+
+  def close(): Unit = socket.foreach(_.disconnect)
 
   protected def parseFrame(message: String): Option[(Promise[String], String)] = {
     try {
@@ -60,9 +56,9 @@ class WebSocketPF(parameters: WebSocketParameters)
         val body = responses(1)
         val promise = promises.get(sequence)
         promise match {
-          case Some(promise) =>
+          case Some(promise_) =>
             promises.synchronized(promises -= sequence)
-            Some(promise, body)
+            Some(promise_, body)
           case None =>
             None
         }
@@ -77,26 +73,16 @@ class WebSocketPF(parameters: WebSocketParameters)
       case Some(tuple) =>
         tuple._1.success(tuple._2)
       case None =>
-        error(s"unknown message ${message}")
+        error(s"unknown message $message")
     }
   }
 
   override def onDisconnected(s: WebSocket, sf: WebSocketFrame, cf: WebSocketFrame, closedByServer: Boolean): Unit = {
     promises.synchronized {
       val promises_ = promises.toList
-      promises.clear
+      promises.clear()
       promises_
     }.foreach(_._2.failure(new IllegalStateException))
-
-    socketState.synchronized {
-      if (!socketState.isCompleted) {
-        if (closedByServer) {
-          socketState.failure(new IllegalStateException)
-        } else {
-          socketState.success(true)
-        }
-      }
-    }
   }
 
   override def onSendError(s: WebSocket, cause: WebSocketException, frame: WebSocketFrame): Unit =

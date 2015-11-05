@@ -12,16 +12,11 @@ class HelloScaloid extends SActivity with TagUtil {
 
   lazy val meToo = new STextView("Me too")
   lazy val webSocket = {
-    val ws = new WebSocketPF(WebSocketParameters(
+    new WebSocketPF(WebSocketParameters(
       "ws://echo.websocket.org",
       5000,
       ""
     ))
-    ws.state.onComplete {
-      case Success(_) => info("socket shutdowned")
-      case Failure(t) => error(s"socket failed ${t.getMessage}")
-    }
-    ws
   }
 
   private var counter = 1
@@ -30,7 +25,7 @@ class HelloScaloid extends SActivity with TagUtil {
 
     contentView = new SVerticalLayout {
       style {
-        case b: SButton => b.textColor(Color.RED).onClick(self.onClick)
+        case b: SButton => b.textColor(Color.RED).onClick(self.onClick())
         case t: STextView => t textSize 10.dip
         case e: SEditText => e.backgroundColor(Color.YELLOW).textColor(Color.BLACK)
       }
@@ -45,10 +40,11 @@ class HelloScaloid extends SActivity with TagUtil {
     } padding 20.dip
   }
 
-  def onClick: Unit = {
-    info(s"onClick ${counter}")
+  def onClick(): Unit = {
+    info(s"onClick $counter")
+    info(s"socket state: ${webSocket.isOpen}")
     if (counter == 10) {
-      webSocket.close
+      webSocket.close()
     } else {
       val future = webSocket.request(s"aaa${counter}bbb")
       future.onSuccess { case s => info(s) }
