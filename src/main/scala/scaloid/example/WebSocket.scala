@@ -112,17 +112,17 @@ trait WebSocketStateListener {
   def onSocketResult(result: Throwable): Unit
 }
 
-class ShutdownableBlockingDeque[T <: AnyRef](implicit c:ClassTag[T])
+class ShutdownableBlockingDeque[T]
   extends java.util.concurrent.LinkedBlockingDeque[T] {
 
   private var enabled: Boolean = true
 
-  def shutdown(): Option[Iterator[T]] = synchronized {
+  def shutdown(): Option[List[T]] = synchronized {
     if (enabled) {
       enabled = false
-      val items = toArray(Array[T]())
+      val list = iterator().asScala.toList
       clear()
-      Some(items.iterator)
+      Some(list)
     } else {
       None
     }
