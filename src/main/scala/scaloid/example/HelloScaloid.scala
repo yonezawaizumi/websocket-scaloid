@@ -60,14 +60,13 @@ class HelloScaloid extends SActivity with TagUtil with Logger with WebSocketStat
     if (counter == 10) {
       webSocket.close()
 
-      val queue = new ShutdownableBlockingDeque[WebSocketData]
-      queue.offer(WebSocketDataFinalize)
-      queue.offer(WebSocketDataFinalize)
-      queue.offer(WebSocketDataFinalize)
-      queue.offer(WebSocketDataFinalize)
+      val queue = new ShutdownableBlockingDeque[WebSocketRequest]
+      queue.offer(WebSocketFinalizeRequest)
+      queue.offer(WebSocketFinalizeRequest)
+      queue.offer(WebSocketFinalizeRequest)
       queue.shutdown().get.foreach(d => self.info(s"test: ${d.toString}"))
     } else {
-      val data = new WebSocketData(s"aaa${counter}bbb") {
+      val data = new WebSocketRequest(s"aaa${counter}bbb") {
         val activity = new scala.ref.WeakReference(self)
         override def onSuccess(response: String): Unit = {
           activity.get.foreach(a => runOnUiThread(a.info(s"socket result $request => $response")))

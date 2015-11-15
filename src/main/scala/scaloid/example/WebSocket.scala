@@ -101,12 +101,12 @@ class WebSocketPF(parameters: WebSocketParameters)
 
 }
 
-class WebSocketData(val request: String) {
+class WebSocketRequest(val request: String) {
   def onSuccess(response: String): Unit = {}
   def onFailure(error: Throwable): Unit = {}
 }
 
-case object WebSocketDataFinalize extends WebSocketData("")
+case object WebSocketFinalizeRequest extends WebSocketRequest("")
 
 trait WebSocketStateListener {
   def onSocketResult(result: Throwable): Unit
@@ -148,12 +148,12 @@ class WebSocketCB(parameters: WebSocketParameters, listener: scala.ref.WeakRefer
   with Runnable
   with TagUtil {
 
-  private val queue = new ShutdownableBlockingDeque[WebSocketData]
-  private val waitings = new scala.collection.mutable.HashMap[Int, WebSocketData]
+  private val queue = new ShutdownableBlockingDeque[WebSocketRequest]
+  private val waitings = new scala.collection.mutable.HashMap[Int, WebSocketRequest]
 
   new Thread(this).start()
 
-  def request(data: WebSocketData): Boolean = {
+  def request(data: WebSocketRequest): Boolean = {
     if (queue.offer(data)) {
       true
     } else {
@@ -162,7 +162,7 @@ class WebSocketCB(parameters: WebSocketParameters, listener: scala.ref.WeakRefer
     }
   }
 
-  def close(): Boolean = queue.offerFirst(WebSocketDataFinalize)
+  def close(): Boolean = queue.offerFirst(WebSocketFinalizeRequest)
 
   def run(): Unit = {
     val factory = new WebSocketFactory
@@ -172,7 +172,7 @@ class WebSocketCB(parameters: WebSocketParameters, listener: scala.ref.WeakRefer
         .addListener(this)
         .connect()
       Iterator.continually(queue.take()).forall({
-        case WebSocketDataFinalize =>
+        case WebSocketFinalizeRequest =>
           queue.shutdown().get.foreach(_.onFailure(ClosingException))
           waitings.synchronized {
             val list = waitings.toList
@@ -181,7 +181,7 @@ class WebSocketCB(parameters: WebSocketParameters, listener: scala.ref.WeakRefer
           }.foreach(_._2.onFailure(ClosingException))
           socket.disconnect()
           false
-        case data: WebSocketData =>
+        case data: WebSocketRequest =>
           waitings.synchronized(waitings += ((data.hashCode, data)))
           socket.sendText(s"${data.hashCode} ${data.request}")
           true
@@ -191,7 +191,7 @@ class WebSocketCB(parameters: WebSocketParameters, listener: scala.ref.WeakRefer
     }
   }
 
-  protected def parseFrame(message: String): Option[(WebSocketData, String)] = {
+  protected def parseFrame(message: String): Option[(WebSocketRequest, String)] = {
     try {
       val responses = message.split(" ", 2)
       if (responses.length < 2) {
