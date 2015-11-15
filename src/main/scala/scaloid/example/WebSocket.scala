@@ -174,11 +174,6 @@ class WebSocketCB(parameters: WebSocketParameters, listener: scala.ref.WeakRefer
       Iterator.continually(queue.take()).forall({
         case WebSocketFinalizeRequest =>
           queue.shutdown().get.foreach(_.onFailure(ClosingException))
-          waitings.synchronized {
-            val list = waitings.toList
-            waitings.clear()
-            list
-          }.foreach(_._2.onFailure(ClosingException))
           socket.disconnect()
           false
         case data: WebSocketRequest =>
@@ -187,7 +182,9 @@ class WebSocketCB(parameters: WebSocketParameters, listener: scala.ref.WeakRefer
           true
       })
     } catch {
-      case e: WebSocketException => listener.get.foreach(_.onSocketResult(e))
+      case e: Exception =>
+        queue.shutdown().get.foreach(_.onFailure(ClosingException))
+        listener.get.foreach(_.onSocketResult(e))
     }
   }
 
@@ -201,7 +198,9 @@ class WebSocketCB(parameters: WebSocketParameters, listener: scala.ref.WeakRefer
         waitings.get(hashCode) match {
           case Some(data) =>
             waitings.synchronized(waitings -= hashCode)
-            Some(data, responses{1})
+            Some(data, responses {
+              1
+            })
           case None =>
             None
         }
@@ -220,8 +219,14 @@ class WebSocketCB(parameters: WebSocketParameters, listener: scala.ref.WeakRefer
     }
   }
 
-  override def onDisconnected(s: WebSocket, sf: WebSocketFrame, cf: WebSocketFrame, closedByServer: Boolean): Unit =
+  override def onDisconnected(s: WebSocket, sf: WebSocketFrame, cf: WebSocketFrame, closedByServer: Boolean): Unit = {
+    waitings.synchronized {
+      val list = waitings.toList
+      waitings.clear()
+      list
+    }.foreach(_._2.onFailure(ClosingException))
     if (closedByServer) listener.get.foreach(_.onSocketResult(ClosingException))
+  }
 
   override def onSendError(s: WebSocket, cause: WebSocketException, frame: WebSocketFrame): Unit =
     listener.get.foreach(_.onSocketResult(SendException(if (frame != null) frame.getPayloadText else "")))
